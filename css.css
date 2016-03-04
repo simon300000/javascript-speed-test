@@ -1,0 +1,19 @@
+* {
+    margin: 1px;
+}
+
+canvas {
+    border-style: solid;
+    border-color: rgb(106, 210, 210);
+    border-width: 1px;
+    margin: 3px;
+}
+
+footer {
+    position: fixed;
+    bottom: 0px;
+}
+
+main {
+    margin: 3px;
+}
