@@ -227,11 +227,7 @@ function render(canvas, status) {
     var start = new Date().getTime();
     var w = canvas.attributes.width.value;
     var h = canvas.attributes.height.value;
-    if (Number(document.getElementById('ssp').value) < 1) {
-        var samps = 25;
-    } else {
-        var samps = Number(document.getElementById('ssp').value);
-    }
+    var samps = Number(document.getElementById('ssp').value) < 1 && 25 || Number(document.getElementById('ssp').value)
 
     // cam pos, dir
     var cam = new Ray(new Vec(50, 52, 295.6), new Vec(0, -0.042612, -1).norm());
