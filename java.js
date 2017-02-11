@@ -291,10 +291,12 @@ function render(canvas, status) {
 
         y++;
         if (!pendingStop) {
-            if (y < h)
+            if (y < h) {
                 setTimeout(renderLine, 0);
-            else
-                status.innerHTML = (new Date().getTime() - start) / 1000 + " sec";
+            } else {
+                status.innerHTML = (new Date().getTime() - start) / 1000 + " sec"
+                stop()
+            }
         }
     }
 
