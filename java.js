@@ -273,7 +273,7 @@ function render(canvas, status) {
                 workers[i].onmessage = function(e) {
                     var colors = e.data.color
                     for (var i = 0; i < colors.length; i++) {
-                        c[colors[i].i] = colors[i].c
+                        c[colors[i].i] = c[colors[i].i].add((new Vec(clamp(colors[i].rx), clamp(colors[i].ry), clamp(colors[i].rz))).mul(.25));
                     }
                     renderOutput(e.data.y)
                     y++
