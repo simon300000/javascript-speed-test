@@ -32,7 +32,9 @@
             <span class="input-group-addon">SSP/4</span>
             <input id="ssp" type="number" class="form-control" placeholder="ssp">
             <span class="input-group-addon">Web worker</span>
-            <input id="worker" type="number" class="form-control" placeholder="0">
+            <input oninput="setting()"id="worker" type="number" class="form-control" placeholder="0">
+            <span class="input-group-addon">Work unit height</span>
+            <input id="unit" type="number" class="form-control" placeholder="average" disabled>
         </div>
         <button class="btn btn-success" id="start" onclick="render(document.getElementById('renderCanvas'), document.getElementById('status'))" type="button">
             Run

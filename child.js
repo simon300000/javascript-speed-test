@@ -1,70 +1,74 @@
 //postMessage
 //onmessage
 onmessage = function(e) {
-    var w = e.data.w
-    var h = e.data.h
-    var samps = e.data.samps
+    if (e.data === true) {
+        postMessage(true)
+    } else {
+        var w = e.data.w
+        var h = e.data.h
+        var samps = e.data.samps
 
-    // cam pos, dir
-    var cam = new Ray(new Vec(50, 52, 295.6), new Vec(0, -0.042612, -1).norm());
-    var cx = new Vec(w * .5135 / h, 0, 0);
-    var cy = (cx.cross(cam.d)).norm().mul(.5135);
+        // cam pos, dir
+        var cam = new Ray(new Vec(50, 52, 295.6), new Vec(0, -0.042612, -1).norm());
+        var cx = new Vec(w * .5135 / h, 0, 0);
+        var cy = (cx.cross(cam.d)).norm().mul(.5135);
 
-    // final color buffer
-    var c = new Array(w * h);
-    for (var i = 0; i < w * h; i++)
-        c[i] = Vec.Zero;
+        // final color buffer
+        var c = new Array(w * h);
+        for (var i = 0; i < w * h; i++)
+            c[i] = Vec.Zero;
 
-    // Loop over image rows
-    var y = e.data.y
-    var ye = e.data.ye
+        // Loop over image rows
+        var y = e.data.y
+        var ye = e.data.ye
 
 
-    for (var ri = 0; ri < ye; ri++) {
-        var colors = []
-        // Loop cols
-        for (var x = 0; x < w; x++) {
-            // 2x2 subpixel rows
-            for (var sy = 0; sy < 2; sy++) {
-                var i = (h - y - 1) * w + x;
+        for (var ri = 0; ri < ye; ri++) {
+            var colors = []
+            // Loop cols
+            for (var x = 0; x < w; x++) {
+                // 2x2 subpixel rows
+                for (var sy = 0; sy < 2; sy++) {
+                    var i = (h - y - 1) * w + x;
 
-                // 2x2 subpixel cols
-                for (var sx = 0; sx < 2; sx++) {
-                    var r = Vec.Zero;
-                    for (var s = 0; s < samps; s++) {
-                        var r1 = 2 * rand();
-                        var r2 = 2 * rand();
-                        var dx = r1 < 1 ? Math.sqrt(r1) - 1 : 1 - Math.sqrt(2 - r1);
-                        var dy = r2 < 1 ? Math.sqrt(r2) - 1 : 1 - Math.sqrt(2 - r2);
+                    // 2x2 subpixel cols
+                    for (var sx = 0; sx < 2; sx++) {
+                        var r = Vec.Zero;
+                        for (var s = 0; s < samps; s++) {
+                            var r1 = 2 * rand();
+                            var r2 = 2 * rand();
+                            var dx = r1 < 1 ? Math.sqrt(r1) - 1 : 1 - Math.sqrt(2 - r1);
+                            var dy = r2 < 1 ? Math.sqrt(r2) - 1 : 1 - Math.sqrt(2 - r2);
 
-                        var d = cx.mul(((sx + .5 + dx) / 2 + x) / w - .5).add(
-                            cy.mul(((sy + .5 + dy) / 2 + y) / h - .5)).add(cam.d);
+                            var d = cx.mul(((sx + .5 + dx) / 2 + x) / w - .5).add(
+                                cy.mul(((sy + .5 + dy) / 2 + y) / h - .5)).add(cam.d);
 
-                        // Camera rays are pushed forward to start in interior
-                        var camRay = new Ray(cam.o.add(d.mul(140)), d.norm());
+                            // Camera rays are pushed forward to start in interior
+                            var camRay = new Ray(cam.o.add(d.mul(140)), d.norm());
 
-                        // Accumuate radiance
-                        r = r.add(radiance(camRay, 0).mul(1.0 / samps));
+                            // Accumuate radiance
+                            r = r.add(radiance(camRay, 0).mul(1.0 / samps));
+                        }
+
+                        // Convert radiance to color
+                        //c[i] = c[i].add((new Vec(clamp(r.x), clamp(r.y), clamp(r.z))).mul(.25));
+                        colors.push({
+                            "i": i,
+                            "rx": r.x,
+                            "ry": r.y,
+                            "rz": r.z
+                        })
                     }
-
-                    // Convert radiance to color
-                    //c[i] = c[i].add((new Vec(clamp(r.x), clamp(r.y), clamp(r.z))).mul(.25));
-                    colors.push({
-                        "i": i,
-                        "rx": r.x,
-                        "ry": r.y,
-                        "rz": r.z
-                    })
                 }
             }
+            postMessage({
+                "color": colors,
+                "y": y
+            })
+            y++
         }
-        postMessage({
-            "color": colors,
-            "y": y
-        })
-        y++
+        postMessage(true)
     }
-    self.close()
 }
 
 function RandomLCG(seed) {

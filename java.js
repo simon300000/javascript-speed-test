@@ -219,9 +219,9 @@ function radiance(r, depth) {
 
 var pendingStop = false;
 
-
 function render(canvas, status) {
     var worker = Number(document.getElementById('worker').value) > 0 && Number(document.getElementById('worker').value)
+    var workUnit = Number(document.getElementById('unit').value) > 0 && Number(document.getElementById('unit').value)
     var workers
 
     if (worker) {
@@ -269,45 +269,65 @@ function render(canvas, status) {
         status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
 
         if (worker) {
-            for (var i = 0; i < workers.length; i++) {
-                workers[i].onmessage = function(e) {
-                    var colors = e.data.color
-                    for (var i = 0; i < colors.length; i++) {
-                        c[colors[i].i] = c[colors[i].i].add((new Vec(clamp(colors[i].rx), clamp(colors[i].ry), clamp(colors[i].rz))).mul(.25));
-                    }
-                    renderOutput(e.data.y)
-                    y++
-                    if (!pendingStop) {
-                        if (y < h) {
-                            status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
-                        } else {
-                            status.innerHTML = (new Date().getTime() - start) / 1000 + " sec"
-                            stop()
-                        }
-                    } else {
-                        for (var i = 0; i < workers.length; i++) {
-                            workers[i].terminate()
-                        }
-                    }
+            var work
+            if (workUnit) {
+                work = Array(Math.ceil(w / workUnit))
+                for (var i = 0; i < work.length; i++) {
+                    work[i] = Math.trunc(w / work.length)
+                }
+                for (var i = 0; i < w % work.length; i++) {
+                    work[i]++
+                }
+            } else {
+                work = Array(workers.length)
+                for (var i = 0; i < work.length; i++) {
+                    work[i] = Math.trunc(w / work.length)
+                }
+                for (var i = 0; i < w % work.length; i++) {
+                    work[i]++
                 }
             }
-
-            var work = Array(workers.length)
-            for (var i = 0; i < work.length; i++) {
-                work[i] = Math.trunc(w / work.length)
-            }
-            for (var i = 0; i < w % work.length; i++) {
-                work[i]++
-            }
-
-            for (var i = 0; i < workers.length; i++) {
-                workers[i].postMessage({
+            for (var i = work.length - 1; i >= 0; i--) {
+                work[i] = {
                     "w": w,
                     "h": h,
                     "samps": samps,
                     "y": workStart(work, i),
                     "ye": work[i]
-                })
+                }
+            }
+
+            for (var i = 0; i < workers.length; i++) {
+                workers[i].onmessage = function(e) {
+                    if (e.data === true) {
+                        if (work.length > 0) {
+                            e.target.postMessage(work.shift())
+                        }
+                    } else {
+                        var colors = e.data.color
+                        for (var i = 0; i < colors.length; i++) {
+                            c[colors[i].i] = c[colors[i].i].add((new Vec(clamp(colors[i].rx), clamp(colors[i].ry), clamp(colors[i].rz))).mul(.25));
+                        }
+                        renderOutput(e.data.y)
+                        y++
+                        if (!pendingStop) {
+                            if (y < h) {
+                                status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
+                            } else {
+                                status.innerHTML = (new Date().getTime() - start) / 1000 + " sec"
+                                stop()
+                            }
+                        } else {
+                            for (var i = 0; i < workers.length; i++) {
+                                workers[i].terminate()
+                            }
+                        }
+
+                    }
+                }
+            }
+            for (var i = 0; i < workers.length; i++) {
+                workers[i].postMessage(true)
             }
 
 
@@ -399,6 +419,11 @@ function setting() {
     } else {
         document.getElementById('renderCanvas').width = Number(document.getElementById('width').value)
         document.getElementById('renderCanvas').height = Number(document.getElementById('width').value)
+    }
+    if (Number(document.getElementById('worker').value) > 0 && Number(document.getElementById('worker').value)) {
+        document.getElementById("unit").disabled = false
+    } else {
+        document.getElementById("unit").disabled = true
     }
 }
 
