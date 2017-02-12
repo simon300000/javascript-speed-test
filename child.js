@@ -1,3 +1,70 @@
+//postMessage
+//onmessage
+onmessage = function(e) {
+    var w = e.data.w
+    var h = e.data.h
+    var samps = e.data.samps
+
+    // cam pos, dir
+    var cam = new Ray(new Vec(50, 52, 295.6), new Vec(0, -0.042612, -1).norm());
+    var cx = new Vec(w * .5135 / h, 0, 0);
+    var cy = (cx.cross(cam.d)).norm().mul(.5135);
+
+    // final color buffer
+    var c = new Array(w * h);
+    for (var i = 0; i < w * h; i++)
+        c[i] = Vec.Zero;
+
+    // Loop over image rows
+    var y = e.data.y
+    var ye = e.data.ye
+
+
+    for (var ri = 0; ri < ye; ri++) {
+        var colors = []
+        // Loop cols
+        for (var x = 0; x < w; x++) {
+            // 2x2 subpixel rows
+            for (var sy = 0; sy < 2; sy++) {
+                var i = (h - y - 1) * w + x;
+
+                // 2x2 subpixel cols
+                for (var sx = 0; sx < 2; sx++) {
+                    var r = Vec.Zero;
+                    for (var s = 0; s < samps; s++) {
+                        var r1 = 2 * rand();
+                        var r2 = 2 * rand();
+                        var dx = r1 < 1 ? Math.sqrt(r1) - 1 : 1 - Math.sqrt(2 - r1);
+                        var dy = r2 < 1 ? Math.sqrt(r2) - 1 : 1 - Math.sqrt(2 - r2);
+
+                        var d = cx.mul(((sx + .5 + dx) / 2 + x) / w - .5).add(
+                            cy.mul(((sy + .5 + dy) / 2 + y) / h - .5)).add(cam.d);
+
+                        // Camera rays are pushed forward to start in interior
+                        var camRay = new Ray(cam.o.add(d.mul(140)), d.norm());
+
+                        // Accumuate radiance
+                        r = r.add(radiance(camRay, 0).mul(1.0 / samps));
+                    }
+
+                    // Convert radiance to color
+                    //c[i] = c[i].add((new Vec(clamp(r.x), clamp(r.y), clamp(r.z))).mul(.25));
+                    colors.push({
+                        "i": i,
+                        "c": c[i].add((new Vec(clamp(r.x), clamp(r.y), clamp(r.z))).mul(.25))
+                    })
+                }
+            }
+        }
+        postMessage({
+            "color": colors,
+            "y": y
+        })
+        y++
+    }
+    self.close()
+}
+
 function RandomLCG(seed) {
     return function() {
         seed = (214013 * seed + 2531011) % 0x100000000;
@@ -215,196 +282,4 @@ function radiance(r, depth) {
             }
         }
     }
-}
-
-var pendingStop = false;
-
-
-function render(canvas, status) {
-    var worker = Number(document.getElementById('worker').value) > 0 && Number(document.getElementById('worker').value)
-    var workers
-
-    if (worker) {
-        workers = Array(worker)
-        for (var i = 0; i < workers.length; i++) {
-            workers[i] = new Worker("child.js")
-            workers[i].onerror = function(e) {
-                console.error(e);
-            }
-        }
-    }
-
-    document.getElementsByClassName('input-group')[0].style.display = 'none';
-    document.getElementById('start').style.display = 'none';
-    document.getElementById('stop').style.display = '';
-
-    var start = new Date().getTime();
-    var w = canvas.attributes.width.value;
-    var h = canvas.attributes.height.value;
-    var samps = Number(document.getElementById('ssp').value) < 1 && 25 || Number(document.getElementById('ssp').value)
-
-    if (!worker) {
-        // cam pos, dir
-        var cam = new Ray(new Vec(50, 52, 295.6), new Vec(0, -0.042612, -1).norm());
-        var cx = new Vec(w * .5135 / h, 0, 0);
-        var cy = (cx.cross(cam.d)).norm().mul(.5135);
-    }
-
-    // final color buffer
-    var c = new Array(w * h);
-    for (var i = 0; i < w * h; i++)
-        c[i] = Vec.Zero;
-
-    // Output
-    var ctx = canvas.getContext("2d");
-    var imgdata = ctx.getImageData(0, 0, w, h);
-    var pixels = imgdata.data;
-
-    // Loop over image rows
-    var y = 0;
-    pendingStop = false;
-    setTimeout(renderLine, 0);
-
-    function renderLine() {
-        status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
-
-        if (worker) {
-            for (var i = 0; i < workers.length; i++) {
-                workers[i].onmessage = function(e) {
-                    var colors = e.data.color
-                    for (var i = 0; i < colors.length; i++) {
-                        c[colors[i].i] = colors[i].c
-                    }
-                    renderOutput(e.data.y)
-                    y++
-                    if (!pendingStop) {
-                        if (y < h) {
-                            status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
-                        } else {
-                            status.innerHTML = (new Date().getTime() - start) / 1000 + " sec"
-                            stop()
-                        }
-                    } else {
-                        for (var i = 0; i < workers.length; i++) {
-                            workers[i].terminate()
-                        }
-                    }
-                }
-            }
-
-            var work = Array(workers.length)
-            for (var i = 0; i < work.length; i++) {
-                work[i] = Math.trunc(w / work.length)
-            }
-            for (var i = 0; i < w % work.length; i++) {
-                work[i]++
-            }
-
-            for (var i = 0; i < workers.length; i++) {
-                workers[i].postMessage({
-                    "w": w,
-                    "h": h,
-                    "samps": samps,
-                    "y": workStart(work, i),
-                    "ye": work[i]
-                })
-            }
-
-
-        } else {
-            // Loop cols
-            for (var x = 0; x < w; x++) {
-                // 2x2 subpixel rows
-                for (var sy = 0; sy < 2; sy++) {
-                    var i = (h - y - 1) * w + x;
-
-                    // 2x2 subpixel cols
-                    for (var sx = 0; sx < 2; sx++) {
-                        var r = Vec.Zero;
-                        for (var s = 0; s < samps; s++) {
-                            var r1 = 2 * rand();
-                            var r2 = 2 * rand();
-                            var dx = r1 < 1 ? Math.sqrt(r1) - 1 : 1 - Math.sqrt(2 - r1);
-                            var dy = r2 < 1 ? Math.sqrt(r2) - 1 : 1 - Math.sqrt(2 - r2);
-
-                            var d = cx.mul(((sx + .5 + dx) / 2 + x) / w - .5).add(
-                                cy.mul(((sy + .5 + dy) / 2 + y) / h - .5)).add(cam.d);
-
-                            // Camera rays are pushed forward to start in interior
-                            var camRay = new Ray(cam.o.add(d.mul(140)), d.norm());
-
-                            // Accumuate radiance
-                            r = r.add(radiance(camRay, 0).mul(1.0 / samps));
-                        }
-
-                        // Convert radiance to color
-                        c[i] = c[i].add((new Vec(clamp(r.x), clamp(r.y), clamp(r.z))).mul(.25));
-                    }
-                }
-            }
-
-            renderOutput();
-
-            y++;
-            if (!pendingStop) {
-                if (y < h) {
-                    setTimeout(renderLine, 0);
-                } else {
-                    status.innerHTML = (new Date().getTime() - start) / 1000 + " sec"
-                    stop()
-                }
-            }
-        }
-    }
-
-    function renderOutput(ty) {
-        if (worker) {
-            var i = (h - ty - 1) * w * 4,
-                j = (h - ty - 1) * w;
-            for (var x = 0; x < w; x++) {
-                pixels[i++] = toInt(c[j].x);
-                pixels[i++] = toInt(c[j].y);
-                pixels[i++] = toInt(c[j].z);
-                pixels[i++] = 255;
-                j++;
-            }
-        } else {
-            var i = (h - y - 1) * w * 4,
-                j = (h - y - 1) * w;
-            for (var x = 0; x < w; x++) {
-                pixels[i++] = toInt(c[j].x);
-                pixels[i++] = toInt(c[j].y);
-                pixels[i++] = toInt(c[j].z);
-                pixels[i++] = 255;
-                j++;
-            }
-        }
-
-        ctx.putImageData(imgdata, 0, 0);
-    }
-}
-
-function stop() {
-    document.getElementById('stop').style.display = 'none';
-    pendingStop = true;
-    document.getElementById('start').style.display = '';
-    document.getElementsByClassName('input-group')[0].style.display = ''
-}
-
-
-function setting() {
-    if (Number(document.getElementById('width').value) < 1) {
-        document.getElementById('renderCanvas').width = 256
-        document.getElementById('renderCanvas').height = 256
-    } else {
-        document.getElementById('renderCanvas').width = Number(document.getElementById('width').value)
-        document.getElementById('renderCanvas').height = Number(document.getElementById('width').value)
-    }
-}
-
-function workStart(workList, workerNumber) {
-    if (workerNumber === 0) {
-        return 0
-    }
-    return workStart(workList, workerNumber - 1) + workList[workerNumber - 1]
 }
