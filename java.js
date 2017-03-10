@@ -266,7 +266,7 @@ function render(canvas, status) {
     setTimeout(renderLine, 0);
 
     function renderLine() {
-        status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
+        status.innerHTML = "Rendering (" + samps * 4 + " spp)<br>" + (100.0 * y / (h - 1)).toFixed(2) + "%(" + (y + 1) + "/" + h + ")<br>Workers: " + worker + "<br>Work unit: " + workUnit;
 
         if (worker) {
             var work
@@ -312,7 +312,7 @@ function render(canvas, status) {
                         y++
                         if (!pendingStop) {
                             if (y < h) {
-                                status.innerHTML = "Rendering (" + samps * 4 + " spp) " + (100.0 * y / (h - 1)).toFixed(2) + "%";
+                                status.innerHTML = "Rendering (" + samps * 4 + " spp)<br>" + (100.0 * y / (h - 1)).toFixed(2) + "%(" + (y + 1) + "/" + h + ")<br>Workers: " + worker + "<br>Work unit: " + workUnit;
                             } else {
                                 status.innerHTML = (new Date().getTime() - start) / 1000 + " sec"
                                 stop()
