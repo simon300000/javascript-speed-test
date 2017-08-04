@@ -5,7 +5,6 @@
     <meta charset="utf-8">
     <title>javascript渲染速度测试</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <link href="//cdn.bootcss.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
     <script src="java.js" charset="utf-8"></script>
     <meta name="description" content="神奇的浏览器渲染测试">
     <meta name="author" content="simon3000, simon3000@163.com">
@@ -26,20 +25,20 @@
         <canvas id="renderCanvas" width="256" height="256"></canvas>
         <div id="status"></div>
         <br>
-        <div class="input-group">
-            <span class="input-group-addon">Size</span>
-            <input oninput="setting()" id="width" type="number" class="form-control" placeholder="256">
-            <span class="input-group-addon">SSP/4</span>
-            <input id="ssp" type="number" class="form-control" placeholder="ssp">
-            <span class="input-group-addon">Workers</span>
-            <input oninput="setting()"id="worker" type="number" class="form-control" placeholder="0">
-            <span class="input-group-addon">Work unit height</span>
-            <input id="unit" type="number" class="form-control" placeholder="average" disabled>
+        <div>
+            <span>Size</span>
+            <input oninput="setting()" id="width" type="number" placeholder="256">
+            <span>SSP/4</span>
+            <input id="ssp" type="number" placeholder="ssp">
+            <span>Workers</span>
+            <input oninput="setting()" id="worker" type="number" placeholder="0">
+            <span>Work unit height</span>
+            <input id="unit" type="number" placeholder="average" disabled>
         </div>
-        <button class="btn btn-success" id="start" onclick="render(document.getElementById('renderCanvas'), document.getElementById('status'))" type="button">
+        <buttonid="start" onclick="render(document.getElementById('renderCanvas'), document.getElementById('status'))" type="button">
             Run
-        </button>
-        <button class="btn btn-danger" id="stop" onclick="stop()" type="button">
+            </button>
+            <button id="stop" onclick="stop()" type="button">
             Stop
         </button>
     </main>
@@ -47,6 +46,7 @@
 </body>
 <script type="text/javascript">
     document.getElementById('stop').style.display = 'none';
+
 </script>
 
 </html>
